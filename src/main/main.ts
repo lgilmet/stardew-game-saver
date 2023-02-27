@@ -12,11 +12,12 @@ import path from 'path';
 import { app, BrowserWindow, shell, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
+import chokidar from 'chokidar';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
 
-// how do i import chokidar and pass it to the constructor?
-import chokidar from 'chokidar';
+const { dialog } = require('electron');
+const Store = require('electron-store');
 
 class AppUpdater {
   constructor() {
@@ -25,6 +26,8 @@ class AppUpdater {
     autoUpdater.checkForUpdatesAndNotify();
   }
 }
+
+const store = new Store();
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -38,17 +41,30 @@ ipcMain.on('greeter', async (event, arg) => {
   console.log('greeter', arg);
 });
 
+ipcMain.handle('get-file-path', async (event, arg) => {
+  console.log('get-file-path', store.get('filePath'));
+  return store.get('filePath');
+});
+
 ipcMain.on('set-folder', async (event, arg) => {
   console.log('set-folder', arg);
-  const watcher = chokidar.watch(arg, {
-    ignored: /(^|[\/\\])\../, // ignore dotfiles
-    persistent: true,
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory'],
   });
+  console.log('result', result);
+  if (!result.canceled) {
+    // add filepaths to electron store
+    store.set('filePath', result.filePaths);
+    const watcher = chokidar.watch(result.filePaths, {
+      ignored: /(^|[\/\\])\../, // ignore dotfiles
+      persistent: true,
+    });
 
-  watcher
-    .on('add', (folder) => console.log(`File ${folder} has been added`))
-    .on('change', (folder) => console.log(`File ${folder} has been changed`))
-    .on('unlink', (folder) => console.log(`File ${folder} has been removed`));
+    watcher
+      .on('add', (folder) => console.log(`File ${folder} has been added`))
+      .on('change', (folder) => console.log(`File ${folder} has been changed`))
+      .on('unlink', (folder) => console.log(`File ${folder} has been removed`));
+  }
 });
 
 if (process.env.NODE_ENV === 'production') {

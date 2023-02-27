@@ -38,6 +38,10 @@ contextBridge.exposeInMainWorld('electron2', {
   setFolder: (arg: unknown) => {
     ipcRenderer.send('set-folder', arg);
   },
+  // get the file path
+  getFilePath: () => {
+    return ipcRenderer.invoke('get-file-path');
+  },
 });
 
 export type ElectronHandler = typeof electronHandler;

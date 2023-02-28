@@ -1,38 +1,75 @@
+import React from 'react';
 import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
-// import React from 'react';
-// const Store = require('electron-store');
 
 import './App.css';
+import SaveList from './SaveList';
 
 function Hello() {
-  // const [folder, setFolderPath] = React.useState('');
-  // const { watchFolder } = window.electron;
-  const { helloJo, setFolder, getFilePath } = window.electron2;
-  const sayHello = () => {
-    helloJo('jo');
+  const [originFolder, setOriginFolderPath] = React.useState('');
+  const [destFolder, setDestFolderPath] = React.useState('');
+  const { setOriginFolder, getOriginFolder, setDestFolder, getDestFolder } =
+    window.electron;
+
+  const getOrigin = async () => {
+    const folder = await getOriginFolder();
+    if (folder) {
+      setOriginFolderPath(folder);
+    }
+    console.log('originFolder: ', originFolder);
   };
 
-  const getFilePathSync = async () => {
-    const path = await getFilePath();
-    console.log(path);
+  const setOrigin = async () => {
+    setOriginFolder()
+      .then((res) => {
+        console.log('setOriginFolder res: ', res);
+        getOrigin();
+      })
+      .catch((err: any) => console.log(err));
   };
 
-  const watch = () => {
-    setFolder('/Users/iluca/OneDrive/Desktop');
+  const getDest = async () => {
+    const folder = await getDestFolder();
+    if (folder) {
+      setDestFolderPath(folder);
+    }
+    console.log('destFolder: ', destFolder);
   };
+  const setDest = async () => {
+    setDestFolder()
+      .then((res) => {
+        console.log('setDestFolder res: ', res);
+        getDest();
+      })
+      .catch((err: any) => console.log(err));
+  };
+
+  const refresh = async () => {
+    getOrigin();
+    getDest();
+  };
+
+  // on load call getOrigin()
+  React.useEffect(() => {
+    getOrigin();
+    getDest();
+  }, []);
+
   return (
     <div>
-      <h1>Hello World!</h1>
-      {/* <p>{folder}</p> */}
-      <button onClick={watch} type="button">
-        hi
+      <button onClick={setOrigin} type="button">
+        setOrigin
       </button>
-      <button onClick={getFilePathSync} type="button">
-        getFilePath
+      <button onClick={setDest} type="button">
+        setDest
       </button>
-      <button onClick={sayHello} type="button">
-        hello
+      <p>origin: {originFolder}</p>
+      <p>dest: {destFolder}</p>
+
+      <button type="button" onClick={refresh}>
+        refresh
       </button>
+
+      <SaveList />
     </div>
   );
 }

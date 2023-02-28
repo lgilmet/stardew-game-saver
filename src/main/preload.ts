@@ -2,46 +2,18 @@
 /* eslint no-unused-vars: off */
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 
-export type Channels = 'ipc-example';
-
-const hello = () => {
-  return 'watcher';
-};
-
-const electronHandler = {
-  ipcRenderer: {
-    sendMessage(channel: Channels, args: unknown[]) {
-      ipcRenderer.send(channel, args);
-    },
-    on(channel: Channels, func: (...args: unknown[]) => void) {
-      const subscription = (_event: IpcRendererEvent, ...args: unknown[]) =>
-        func(...args);
-      ipcRenderer.on(channel, subscription);
-
-      return () => {
-        ipcRenderer.removeListener(channel, subscription);
-      };
-    },
-    once(channel: Channels, func: (...args: unknown[]) => void) {
-      ipcRenderer.once(channel, (_event, ...args) => func(...args));
-    },
-  },
-};
-
-contextBridge.exposeInMainWorld('electron', electronHandler);
-
 // create another context
-contextBridge.exposeInMainWorld('electron2', {
-  helloJo: (arg: unknown) => {
-    ipcRenderer.send('greeter', arg);
+contextBridge.exposeInMainWorld('electron', {
+  setOriginFolder: (arg: unknown) => {
+    return ipcRenderer.invoke('set-origin-folder', arg);
   },
-  setFolder: (arg: unknown) => {
-    ipcRenderer.send('set-folder', arg);
+  getOriginFolder: () => {
+    return ipcRenderer.invoke('get-origin-folder');
   },
-  // get the file path
-  getFilePath: () => {
-    return ipcRenderer.invoke('get-file-path');
+  setDestFolder: (arg: unknown) => {
+    return ipcRenderer.invoke('set-dest-folder', arg);
+  },
+  getDestFolder: () => {
+    return ipcRenderer.invoke('get-dest-folder');
   },
 });
-
-export type ElectronHandler = typeof electronHandler;

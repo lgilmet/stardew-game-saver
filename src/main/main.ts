@@ -18,6 +18,7 @@ import { resolveHtmlPath } from './util';
 
 const { dialog } = require('electron');
 const Store = require('electron-store');
+const fs = require('fs');
 
 class AppUpdater {
   constructor() {
@@ -31,30 +32,16 @@ const store = new Store();
 
 let mainWindow: BrowserWindow | null = null;
 
-ipcMain.on('ipc-example', async (event, arg) => {
-  const msgTemplate = (pingPong: string) => `IPC test: ${pingPong}`;
-  console.log(msgTemplate(arg));
-  event.reply('ipc-example', msgTemplate('pong'));
+ipcMain.handle('get-origin-folder', async (event, arg) => {
+  return store.get('originFolder');
 });
 
-ipcMain.on('greeter', async (event, arg) => {
-  console.log('greeter', arg);
-});
-
-ipcMain.handle('get-file-path', async (event, arg) => {
-  console.log('get-file-path', store.get('filePath'));
-  return store.get('filePath');
-});
-
-ipcMain.on('set-folder', async (event, arg) => {
-  console.log('set-folder', arg);
+ipcMain.handle('set-origin-folder', async (event, arg) => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openDirectory'],
   });
-  console.log('result', result);
   if (!result.canceled) {
-    // add filepaths to electron store
-    store.set('filePath', result.filePaths);
+    store.set('originFolder', result.filePaths);
     const watcher = chokidar.watch(result.filePaths, {
       ignored: /(^|[\/\\])\../, // ignore dotfiles
       persistent: true,
@@ -64,6 +51,45 @@ ipcMain.on('set-folder', async (event, arg) => {
       .on('add', (folder) => console.log(`File ${folder} has been added`))
       .on('change', (folder) => console.log(`File ${folder} has been changed`))
       .on('unlink', (folder) => console.log(`File ${folder} has been removed`));
+  }
+});
+ipcMain.handle('get-dest-folder', async (event, arg) => {
+  return store.get('destFolder');
+});
+
+// function to get the list of files in the folder
+const getFiles = (dir: string, files_?: string[]) => {
+  const files =
+    dir.length > 0 && fs.existsSync(dir[0]) && fs.readdirSync(dir[0]);
+
+  return files;
+};
+ipcMain.handle('set-dest-folder', async (event, arg) => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory'],
+  });
+  if (!result.canceled) {
+    store.set('destFolder', result.filePaths);
+    const watcher = chokidar.watch(result.filePaths, {
+      ignored: /(^|[\/\\])\../, // ignore dotfiles
+      persistent: true,
+    });
+
+    watcher
+      .on('add', (folder) => {
+        console.log(`File ${folder} has been added`);
+        return getFiles(folder);
+      })
+      .on('change', (folder) => console.log(`File ${folder} has been changed`))
+      .on('unlink', (folder) => console.log(`File ${folder} has been removed`));
+
+    // return the list of files presnet in  the folder
+    const files =
+      result.filePaths.length > 0 &&
+      fs.existsSync(result.filePaths[0]) &&
+      fs.readdirSync(result.filePaths[0]);
+
+    return files;
   }
 });
 
